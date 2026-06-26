@@ -2996,7 +2996,7 @@ function fallbackCopy(text,cb){try{const ta=document.createElement('textarea');t
 
 /* ===== CLOUD SYNC (private GitHub Gist) ===== */
 const SYNC_FILE='groundtrack-state.json';
-const SYNC_EXCLUDE=['gt_sync_token','gt_sync_meta']; /* never leaves this device */
+const SYNC_EXCLUDE=['gt_sync_token','gt_sync_meta','gt_api_key']; /* never leaves this device */
 let _syncTimer=null,_syncBusy=false;
 
 function syncMeta(){return S.get('sync_meta')||{};}
