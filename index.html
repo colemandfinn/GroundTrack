@@ -295,7 +295,7 @@ nav{background:var(--bg2);border-bottom:1px solid var(--border);display:flex;ali
       <button class="btn d sm" onclick="syncDisconnect()">Disconnect</button>
     </div>
     <div id="sync-status" class="sync-stat">not connected</div>
-    <div style="font-family:var(--mono);font-size:10px;color:var(--text3);margin:6px 0 0;">Classic GitHub token, <b>gist</b> scope only. Stored on this device, never in the repo.</div>
+    <div style="font-family:var(--mono);font-size:10px;color:var(--text3);margin:6px 0 0;">Classic GitHub token, <b>gist</b> scope only. Stored on this device, never in the repo. &middot; build v28</div>
     <div class="div"></div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">
       <button class="btn sm" onclick="exportData()">Export backup</button>
@@ -3072,10 +3072,12 @@ S.set=function(k,v){_gtOrigSet(k,v);try{syncOnChange(k);}catch(e){}};
 if('serviceWorker' in navigator && location.protocol.indexOf('http')===0){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}
 
 /* auto-sync: pull on return to a device, flush pending edits on leave (no manual Sync now needed) */
-let _syncLastVis=0;
+let _syncLastVis=0,_syncPoll=null;
 function syncFlush(){if(!syncToken()||_syncBusy)return;const m=syncMeta();if(!((m.dirtyAt||0)>(m.syncedAt||0)))return;_syncBusy=true;syncPushLocal(true).catch(function(){}).then(function(){_syncBusy=false;});}
-function syncOnVisible(){if(!syncToken())return;const n=Date.now();if(n-_syncLastVis<1500)return;_syncLastVis=n;syncReconcile();}
-function syncOnHide(){clearTimeout(_syncTimer);syncFlush();}
+function syncStartPoll(){if(_syncPoll)return;_syncPoll=setInterval(function(){if(!syncToken()||document.visibilityState!=='visible'||_syncBusy)return;var ae=document.activeElement;if(ae&&(ae.tagName==='INPUT'||ae.tagName==='TEXTAREA'||ae.tagName==='SELECT'))return;syncReconcile();},10000);}
+function syncStopPoll(){if(_syncPoll){clearInterval(_syncPoll);_syncPoll=null;}}
+function syncOnVisible(){if(!syncToken())return;syncStartPoll();const n=Date.now();if(n-_syncLastVis<1500)return;_syncLastVis=n;syncReconcile();}
+function syncOnHide(){syncStopPoll();clearTimeout(_syncTimer);syncFlush();}
 if(typeof document!=='undefined'&&document.addEventListener){document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')syncOnVisible();else syncOnHide();});window.addEventListener('focus',syncOnVisible);window.addEventListener('pagehide',syncOnHide);}
 
 document.addEventListener('DOMContentLoaded',()=>{
@@ -3094,7 +3096,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   }
   renderCmd();
   if(!checkinDoneToday())setTimeout(openCheckin,250);
-  if(S.get('sync_token'))setTimeout(syncReconcile,500);
+  if(S.get('sync_token')){setTimeout(syncReconcile,500);syncStartPoll();}
 });
 </script>
 </body>

@@ -1,5 +1,5 @@
 /* GROUNDTRACK service worker: network-first app shell + offline fallback */
-const CACHE='gt-v27';
+const CACHE='gt-v28';
 self.addEventListener('install',e=>{self.skipWaiting();});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
 self.addEventListener('fetch',e=>{
