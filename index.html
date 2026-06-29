@@ -3030,8 +3030,10 @@ async function syncPullRemote(){const id=await syncResolveGist();
   let p;try{p=JSON.parse(f.content||'{}');}catch(e){p={};}
   return{updated:p.updated||0,data:p.data||null};
 }
-async function syncPushLocal(){const id=await syncResolveGist();const now=Date.now();const snap=syncSnapshot();
-  const r=await fetch('https://api.github.com/gists/'+id,{method:'PATCH',headers:Object.assign({'Content-Type':'application/json'},syncHeaders()),body:JSON.stringify({files:{[SYNC_FILE]:{content:JSON.stringify({v:1,updated:now,data:snap})}}})});
+async function syncPushLocal(keepalive){const id=await syncResolveGist();const now=Date.now();const snap=syncSnapshot();
+  const opt={method:'PATCH',headers:Object.assign({'Content-Type':'application/json'},syncHeaders()),body:JSON.stringify({files:{[SYNC_FILE]:{content:JSON.stringify({v:1,updated:now,data:snap})}}})};
+  if(keepalive)opt.keepalive=true;
+  const r=await fetch('https://api.github.com/gists/'+id,opt);
   if(!r.ok)throw new Error('push '+r.status);
   const m=syncMeta();m.syncedAt=now;m.dirtyAt=0;syncSetMeta(m);return now;
 }
@@ -3068,6 +3070,13 @@ function syncRefreshUI(){if(!document.getElementById('sync-status'))return;if(sy
 const _gtOrigSet=S.set.bind(S);
 S.set=function(k,v){_gtOrigSet(k,v);try{syncOnChange(k);}catch(e){}};
 if('serviceWorker' in navigator && location.protocol.indexOf('http')===0){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}
+
+/* auto-sync: pull on return to a device, flush pending edits on leave (no manual Sync now needed) */
+let _syncLastVis=0;
+function syncFlush(){if(!syncToken()||_syncBusy)return;const m=syncMeta();if(!((m.dirtyAt||0)>(m.syncedAt||0)))return;_syncBusy=true;syncPushLocal(true).catch(function(){}).then(function(){_syncBusy=false;});}
+function syncOnVisible(){if(!syncToken())return;const n=Date.now();if(n-_syncLastVis<1500)return;_syncLastVis=n;syncReconcile();}
+function syncOnHide(){clearTimeout(_syncTimer);syncFlush();}
+if(typeof document!=='undefined'&&document.addEventListener){document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')syncOnVisible();else syncOnHide();});window.addEventListener('focus',syncOnVisible);window.addEventListener('pagehide',syncOnHide);}
 
 document.addEventListener('DOMContentLoaded',()=>{
   const today=new Date();
